@@ -81,7 +81,8 @@ int rand_point_generator(T &P,
     if(var.coordinate)
         hit_and_run_coord_update(p,p_prev,P,rand_coord,rand_coord,kapa,lamdas,var,var,true);
     else
-        hit_and_run(p,P,var,var);
+        center_sampler(p, P, var, var);
+        //hit_and_run(p,P,var,var);
 
     for(int i=1; i<=rnum; ++i){
 
@@ -183,7 +184,8 @@ int rand_point_generator(BallIntersectPolytope<T> &PBLarge,
     if(var.coordinate)
         hit_and_run_coord_update(p,p_prev,PBLarge,rand_coord,rand_coord,kapa,lamdas,var,var,true);
     else
-        hit_and_run(p,PBLarge,var,var);
+        center_sampler(p, PBLarge, var, var);
+        //hit_and_run(p,PBLarge,var,var);
 
     for(int i=1; i<=rnum; ++i){
         for(int j=0; j<walk_len; ++j){
@@ -205,6 +207,24 @@ int rand_point_generator(BallIntersectPolytope<T> &PBLarge,
 }
 
 // ----- HIT AND RUN FUNCTIONS ------------ //
+template <class T>
+int center_sampler(Point &p,
+                T &P,
+                vars &var,
+                vars &var2) {
+
+    Point* chebCenter = P.getChebCenter(); 
+    boost::random::uniform_real_distribution<> &urdist = var.urdist;
+    CGAL::Random_points_on_sphere_d<Point> gen (var.n, 1.0);
+    Vector l = *gen - CGAL::Origin();
+    std::pair<Point,Point> ppair = P.line_intersect((*chebCenter), l);
+    Vector b1 = ppair.first - CGAL::Origin();
+    Vector b2 = ppair.second - CGAL::Origin();
+    //std::cout<<"b1="<<b1<<"b2="<<b2<<std::endl;
+    double lambda = urdist(var.rng);
+    p = CGAL::Origin() + (NT(lambda)*b1 + (NT(1-lambda)*b2));
+    return 1;
+}
 
 //hit-and-run with random directions
 template <class T>
