@@ -52,7 +52,9 @@ private:
     //typedef std::vector<flann::Index<flann::L2<double> > >  Flann_trees;
 
 public:
-    stdHPolytope() {}
+    stdHPolytope() {
+        chebCenter = NULL;
+    }
 
     // constructor: cube(d)
     stdHPolytope(int d): _d(d) {
@@ -421,7 +423,16 @@ public:
         return -1;
     }
 
+    void setChebCenter(Point* chebCenter) {
+        this->chebCenter = chebCenter;
+    }
+
     int chebyshev_center(Point& center, double& radius){
+
+        if (chebCenter!=NULL) {
+            center = (*chebCenter);
+            radius = chebRadius;
+        }
         typedef CGAL::Linear_program_from_iterators
                 <K**,                             // for A
                 K*,                              // for b
@@ -501,8 +512,10 @@ public:
                 vecp.push_back(CGAL::to_double(*it));
             }
             center = Point(_d,vecp.begin(),vecp.end());
+            chebCenter = new Point(center);
             //std::cout << center;
             radius = CGAL::to_double(*it);
+            chebRadius = radius;
             //std::cout << radius << std::endl;
         }
         // deallocate memory
@@ -515,6 +528,10 @@ public:
             delete [] A_col[i];
         delete [] b;
         return 0;
+    }
+
+    Point* getChebCenter() {
+        return chebCenter;
     }
 
     // compute intersection point of ray starting from r and pointing to v
@@ -712,6 +729,8 @@ public:
 private:
     int            _d; //dimension
     stdMatrix      _A; //inequalities
+    Point* chebCenter;
+    double chebRadius;
     //EXPERIMENTAL
     //Flann_trees    flann_trees; //the (functional) duals of A lifted to answer NN queries
     //defined for every d coordinate
