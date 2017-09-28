@@ -117,6 +117,10 @@ public:
         return _P.dimension();
     }
 
+    Point* getChebCenter() {
+        return _P.getChebCenter();
+    }
+
     std::pair<Point,Point> line_intersect(Point r,
                                           Vector v){
 
