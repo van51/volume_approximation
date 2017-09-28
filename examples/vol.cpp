@@ -122,6 +122,8 @@ int main(const int argc, const char** argv)
           //std::cout<<"d="<<Pin[0][1]<<std::endl;
           n = Pin[0][1]-1;
           P.init(Pin);
+          Point* chebCenter = new Point(P.dimension(), CGAL::ORIGIN);
+          P.setChebCenter(chebCenter);
           if (verbose && P.num_of_hyperplanes()<100){
               std::cout<<"Input polytope: "<<n<<std::endl;
               P.print();
@@ -164,6 +166,7 @@ int main(const int argc, const char** argv)
           //std::cout<<"d="<<Pin[0][1]<<std::endl;
           n = Pin[0][1]-1;
           P.init(Pin);
+
           //if (verbose && P.num_of_hyperplanes()<100){
           std::cout<<"Input polytope: "<<n<<std::endl;
           //P.print();
