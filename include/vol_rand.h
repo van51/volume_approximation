@@ -41,6 +41,7 @@
 #include <boost/random/uniform_real_distribution.hpp>
 #include <CGAL/Approximate_min_ellipsoid_d.h>
 #include <CGAL/Approximate_min_ellipsoid_d_traits_d.h>
+#include <CGAL/Delaunay_triangulation_3.h>
 #include <vector>
 #include <iostream>
 
@@ -76,6 +77,14 @@ typedef CGAL::Approximate_min_ellipsoid_d_traits_d<Kernel, EXACT_NT> Traits;
 //typedef std::vector<Point>                                     Point_list;
 typedef CGAL::Approximate_min_ellipsoid_d<Traits>              AME;
 
+#include <CGAL/Exact_predicates_exact_constructions_kernel.h>
+typedef CGAL::Exact_predicates_exact_constructions_kernel K;
+typedef CGAL::Triangulation_vertex_base_3<K>                 Vb;
+#include <CGAL/Delaunay_triangulation_cell_base_with_circumcenter_3.h>
+typedef CGAL::Delaunay_triangulation_cell_base_with_circumcenter_3<K> Cb;
+typedef CGAL::Triangulation_data_structure_3<Vb, Cb>         TDS;
+typedef CGAL::Delaunay_triangulation_3<K, TDS>               Triangulation;
+typedef Triangulation::Point          TriangulationPoint;
 // define random generator
 //typedef boost::mt11213b RNGType; ///< mersenne twister generator
 typedef boost::mt19937 RNGType; ///< mersenne twister generator
@@ -110,18 +119,18 @@ public:
           bool NN,
           bool birk,
           bool coordinate,
-          bool use_jl=true,
+          int algoType=3,
           bool epsilon=0.1
         ) :
         m(m), n(n), walk_steps(walk_steps), n_threads(n_threads), err(err), err_opt(err_opt),
         lw(lw), up(up), L(L), rng(rng), get_snd_rand(get_snd_rand),
         urdist(urdist), urdist1(urdist1) , verbose(verbose), rand_only(rand_only), round(round),
-        NN(NN),birk(birk),coordinate(coordinate),epsilon(epsilon),use_jl(use_jl) {};
+        NN(NN),birk(birk),coordinate(coordinate),epsilon(epsilon),algoType(algoType) {};
 
     int m;
     int n;
     double epsilon;
-    bool use_jl;
+    int algoType;
     int walk_steps;
     int n_threads;
     const double err;
@@ -154,8 +163,8 @@ int opt_interior(T &K,vars &var,Point &opt,Vector &w);
 #include <ballintersectpolytope.h>
 //#include <opt_rand.h>
 //#include <oracles.h>
-#include <random_samplers_vis.h>
-//#include <random_samplers.h>
+//#include <random_samplers_vis.h>
+#include <random_samplers.h>
 #include <rounding.h>
 #include <misc.h>
 #include <linear_extensions.h>
@@ -834,6 +843,7 @@ NT volume1_reuse2(T &P,
     Point c(P.dimension(), CGAL::ORIGIN);       //center
     double radius = P.getMinDistToBoundary();
     P.chebyshev_center(c,radius);
+	std::cout << "Radius = " << radius << std::endl;
     //HACK FOR CROSS POLYTOPES
     //std::vector<double> cp(n,0);
     //Point c(n,cp.begin(),cp.end());
