@@ -283,17 +283,16 @@ int hit_and_run_oracle(Point &p,
     int numberOfSteps;
     bool succeeded = false;
    	std::pair<Point,Point> ppair;// = P.line_intersect(p,l);
-	json js;
 	while (!succeeded) {
     	Vector l = *gen - CGAL::Origin();
 		++gen;
         Ray ray(p, l);
-    	ppair.first = P.compute_boundary_intersection(ray, &numberOfSteps, &succeeded, var.epsilon, var.algoType, var, js, 100);
+    	ppair.first = P.compute_boundary_intersection(ray, &numberOfSteps, &succeeded, var.epsilon, var.algoType, var, 100);
 		if (!succeeded)
 			continue;
     	l *= -1;
 		Ray ray2(p, l);
-    	ppair.second = P.compute_boundary_intersection(ray2, &numberOfSteps, &succeeded, var.epsilon, var.algoType, var, js, 100);
+    	ppair.second = P.compute_boundary_intersection(ray2, &numberOfSteps, &succeeded, var.epsilon, var.algoType, var, 100);
 	}
 
     Vector b1 = ppair.first - CGAL::Origin();

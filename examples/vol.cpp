@@ -16,7 +16,6 @@
 // Public License.  If you did not receive this file along with HeaDDaCHe,
 // see <http://www.gnu.org/licenses/>.
 
-#include "json.hpp"
 #include <vol_rand.h>
 #include <random>
 #include <rounding.h>
@@ -60,8 +59,7 @@ int factorial(int n) {
 // oracles.
 int boundary_steps_test(stdHPolytope<double>& P, int k, int l, int num_probes, double epsilon, int num_query_points, vars& var, int use_jl) {
 	Point* internalPoint = new Point(P.dimension(), CGAL::ORIGIN);
-	json rep;
-	Point chebPoint = P.create_point_representation(var, rep, internalPoint);
+	Point chebPoint = P.create_point_representation(var, internalPoint);
 	std::list<Point> randPoints;
 	rand_point_generator(P, chebPoint, num_query_points, var.walk_steps, randPoints, var);
 
@@ -70,9 +68,6 @@ int boundary_steps_test(stdHPolytope<double>& P, int k, int l, int num_probes, d
 	int maxSteps = -1;
 	int minSteps = 101;
 	int failed = 0;
-	json response;
-	response["voronoi"] = rep;
-	response["rays"] = json::array();
 	for (auto it=randPoints.begin(); it!=randPoints.end(); ++it) {
 		Vector direction = (*rps) - CGAL::ORIGIN;	
 
@@ -80,12 +75,7 @@ int boundary_steps_test(stdHPolytope<double>& P, int k, int l, int num_probes, d
 		int numberOfSteps = 0;
 		bool succeeded = false;
 		
-		json j;
-		P.compute_boundary_intersection(r, &numberOfSteps, &succeeded, epsilon, USE_EXACT, var, j, var.walk_steps, 0);
-		if (var.verbose) {
-			j["succeeded"] = succeeded;
-			response["rays"].push_back(j);
-		}
+		P.compute_boundary_intersection(r, &numberOfSteps, &succeeded, epsilon, USE_EXACT, var, var.walk_steps, 0);
 		if (!succeeded) {
 			failed++;
 		} else {
@@ -98,11 +88,6 @@ int boundary_steps_test(stdHPolytope<double>& P, int k, int l, int num_probes, d
 			}
 		}
 	}
-	if (var.verbose) {
-		std::cout << "JSON:" << response.dump() << std::endl;
-	} else {
-		std::cout << failed << "\t" << ((double) totalSteps / randPoints.size()) << "\t" << maxSteps << "\t" << minSteps << std::endl;
-	}
 }
 
 int boundary_main(stdHPolytope<double>& P, int k, int l, int num_probes, double epsilon, int num_query_points, vars& var, int use_jl) {
@@ -114,8 +99,7 @@ int boundary_main(stdHPolytope<double>& P, int k, int l, int num_probes, double 
 
 	std::cout <<"Creating points" << std::endl;
 	Point* internalPoint = new Point(P.dimension(), CGAL::ORIGIN);
-	json rep;
-	Point chebPoint = P.create_point_representation(var, rep, internalPoint);
+	Point chebPoint = P.create_point_representation(var, internalPoint);
 	rand_point_generator(P, chebPoint, 2*num_query_points, var.walk_steps, randPoints, var);
 	std::cout <<"Created points" << std::endl;
 
@@ -154,8 +138,7 @@ int boundary_main(stdHPolytope<double>& P, int k, int l, int num_probes, double 
 
 		Timer timer2;
 		int numberOfSteps = 0;
-		json j;
-		Point p2 = P.compute_boundary_intersection(ray, &numberOfSteps, &succeeded, epsilon, use_jl, var, j, 10, num_probes);
+		Point p2 = P.compute_boundary_intersection(ray, &numberOfSteps, &succeeded, epsilon, use_jl, var, 10, num_probes);
 		double oracle_time = timer2.elapsed_seconds();
 		if(!succeeded) {
 			failed++;
@@ -163,7 +146,7 @@ int boundary_main(stdHPolytope<double>& P, int k, int l, int num_probes, double 
 
 		Timer timer3;
 		ray = Ray(p, -v);
-		Point p3 = P.compute_boundary_intersection(ray, &numberOfSteps, &succeeded, epsilon, use_jl, var, j, 10, num_probes);
+		Point p3 = P.compute_boundary_intersection(ray, &numberOfSteps, &succeeded, epsilon, use_jl, var, 10, num_probes);
 		if(!succeeded) {
 			failed++;
 		}
@@ -248,8 +231,7 @@ int membership_main(stdHPolytope<double>& P, int k, int l, int num_probes, doubl
 		}
 	}
 	std::cout << "Internal point min dist to boundary " << internalPointMinDistToBoundary << std::endl;
-	json rep;
-	Point chebPoint = P.create_point_representation(var, rep, internalPoint);
+	Point chebPoint = P.create_point_representation(var, internalPoint);
 
 	// Create the appropriate data structure based on the parameter
 	Timer timer;
@@ -768,8 +750,7 @@ int main(const int argc, const char** argv) {
         vars var(rnum,n,walk_len,n_threads,err,0,0,0,0,rng,get_snd_rand,
                  urdist,urdist1,verbose,rand_only,round,NN,birk,coordinate,use_jl,epsilon);
 
-		json rep;
-		Point chebPoint = P.create_point_representation(var, rep, internalPoint);
+		Point chebPoint = P.create_point_representation(var, internalPoint);
 
         if(round_only) {
             // Round the polytope and exit

@@ -120,7 +120,7 @@ public:
           bool birk,
           bool coordinate,
           int algoType=3,
-          bool epsilon=0.1
+          double epsilon=0.1
         ) :
         m(m), n(n), walk_steps(walk_steps), n_threads(n_threads), err(err), err_opt(err_opt),
         lw(lw), up(up), L(L), rng(rng), get_snd_rand(get_snd_rand),

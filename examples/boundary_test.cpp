@@ -16,7 +16,6 @@
 // Public License.  If you did not receive this file along with HeaDDaCHe,
 // see <http://www.gnu.org/licenses/>.
 
-#include "json.hpp"
 #include <cstdlib>
 #include <vol_rand.h>
 #include <rounding.h>
@@ -51,14 +50,10 @@ private:
 
 namespace po = boost::program_options; 
 
-json completeTests(stdHPolytope<double>* P, vars& var, int nqp, int k, int l, int algoType, float w) {
+void completeTests(stdHPolytope<double>* P, vars& var, int nqp, int k, int l, int algoType, float w) {
 	var.verbose = true;
 	Point* internalPoint = new Point(P->dimension(), CGAL::ORIGIN);
-	json rep;
-	json response;
-	response["voronoi"] = rep;
-	response["rays"] = json::array();
-	Point chebPoint = P->create_point_representation(var, rep, internalPoint);
+	Point chebPoint = P->create_point_representation(var, internalPoint);
 	if (algoType==USE_LSH) {
 		P->create_lsh_ds(k, l);
 	} 
@@ -77,65 +72,27 @@ json completeTests(stdHPolytope<double>* P, vars& var, int nqp, int k, int l, in
 		Ray r((*it), direction);
 		int numberOfSteps = 0;
 		bool succeeded = false;
-		json j;
 
 		timer.start();
 		auto actualPoint = P->line_intersect(r.source(), r.direction().vector(), false);
-		j["actual_time"] = timer.elapsed_seconds();
-		j["actual_inside"] = (P->is_in(actualPoint.first)==-1);
-		if (!j["actual_inside"]) {
-			j["actual_error"] = P->is_in(actualPoint.first);
-		}
 
 		timer.start();
-		Point appxPoint = P->compute_boundary_intersection(r, &numberOfSteps, &succeeded, 0.1, algoType, var, j, var.walk_steps, l);
-		j["appx_time"] = timer.elapsed_seconds();
-		j["appx_path"] = j["steps"];
-		j["appx_succeeded"] = succeeded;
-		j["appx_steps"] = numberOfSteps;
-		j["appx_inside"] = (P->is_in(appxPoint)==-1);
-		//if (!j["appx_inside"]) {
-			j["appx_error"] = std::sqrt(((actualPoint.first-CGAL::ORIGIN) - (appxPoint-CGAL::ORIGIN)).squared_length());
-		//}
+		Point appxPoint = P->compute_boundary_intersection(r, &numberOfSteps, &succeeded, 0.1, algoType, var, var.walk_steps, l);
 
 		succeeded = false;
 		numberOfSteps = 0;
 		timer.start();
-		Point exactPoint = P->compute_boundary_intersection(r, &numberOfSteps, &succeeded, 0, USE_EXACT, var, j, var.walk_steps, l);
-		j["exact_time"] = timer.elapsed_seconds();
-		j["exact_succeeded"] = succeeded;
-		j["exact_path"] = j["steps"];
-		j["exact_steps"] = numberOfSteps;
-		j["exact_inside"] = (P->is_in(exactPoint)==-1);
-		if (!j["exact_inside"]) {
-			j["exact_error"] = std::sqrt(((actualPoint.first-CGAL::ORIGIN) - (exactPoint-CGAL::ORIGIN)).squared_length());
-		}
-		j.erase("steps");
-
-
-
-		for (auto pit=appxPoint.cartesian_begin(); pit!=appxPoint.cartesian_end(); ++pit) {
-			j["appxPoint"].push_back((*pit));
-		}
-		for (auto pit=exactPoint.cartesian_begin(); pit!=exactPoint.cartesian_end(); ++pit) {
-			j["exactPoint"].push_back((*pit));
-		}
-		for (auto pit=actualPoint.first.cartesian_begin(); pit!=actualPoint.first.cartesian_end(); ++pit) {
-			j["actualPoint"].push_back((*pit));
-		}
-		response["rays"].push_back(j);
+		Point exactPoint = P->compute_boundary_intersection(r, &numberOfSteps, &succeeded, 0, USE_EXACT, var, var.walk_steps, l);
 
 		++rps;
 	}
 
 	delete internalPoint;
-	return response;
 }
 
-json simpleTests(stdHPolytope<double>* P, vars& var, int nqp, bool exact=true, int k=-1, int l=-1) {
+void simpleTests(stdHPolytope<double>* P, vars& var, int nqp, bool exact=true, int k=-1, int l=-1) {
 	Point* internalPoint = new Point(P->dimension(), CGAL::ORIGIN);
-	json rep;
-	Point chebPoint = P->create_point_representation(var, rep, internalPoint);
+	Point chebPoint = P->create_point_representation(var, internalPoint);
 	if (!exact) {
 		P->create_lsh_ds(k, l);
 	}
@@ -147,9 +104,6 @@ json simpleTests(stdHPolytope<double>* P, vars& var, int nqp, bool exact=true, i
 	int maxSteps = -1;
 	int minSteps = 101;
 	int failed = 0;
-	json response;
-	response["voronoi"] = rep;
-	response["rays"] = json::array();
 	auto algo = exact?USE_EXACT:USE_LSH;
 	for (int i=0; i<nqp; ++i) {
 	    std::list<Point> randPoints;
@@ -161,15 +115,9 @@ json simpleTests(stdHPolytope<double>* P, vars& var, int nqp, bool exact=true, i
 		int numberOfSteps = 0;
 		bool succeeded = false;
 		
-		json j;
-		P->compute_boundary_intersection(r, &numberOfSteps, &succeeded, 0.1, algo, var, j, var.walk_steps, l);
-		if (var.verbose) {
-			j["succeeded"] = succeeded;
-			response["rays"].push_back(j);
-		}
+		P->compute_boundary_intersection(r, &numberOfSteps, &succeeded, 0.1, algo, var, var.walk_steps, l);
 	}
 	delete internalPoint;
-	return response;
 }
 
 int main(int argc, char* argv[]) {
@@ -219,26 +167,9 @@ int main(int argc, char* argv[]) {
                  urdist,urdist1,true,false,false,false,false,true,USE_LSHBOX,0.1);
 
 	// create polytope with internal repr
-	json results;
 	stdHPolytope<double>* P = randomPolytope<double>(n, d, diameter);
 	
-	if (!vm.count("full")) {
-		results["original"] = simpleTests(P, var, nqp, exact, k, l);
-	}
-	else {
-		results["original"] = completeTests(P, var, nqp, k, l, algoType, w);
-	}
-
 	randomTransformation<stdHPolytope<double> >(P);	
 
-	if (!vm.count("full")) {
-		results["transformed"] = simpleTests(P, var, nqp, exact, k, l);
-	}
-	else {
-		results["transformed"] = completeTests(P, var, nqp, k, l, algoType, w);
-	}
-
 	delete P;
-	std::cout << results.dump();
-
 }

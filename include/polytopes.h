@@ -45,7 +45,6 @@
 // choose exact integral type
 #ifdef CGAL_USE_GMP
 #include <CGAL/Gmpzf.h>
-#include "json.hpp"
 #include <lshbox.h>
 typedef double LSHBOXNT;
 
@@ -58,7 +57,6 @@ typedef CGAL::Gmpzf ET;
 //#endif
 #include <CGAL/enum.h>
 #include <boost/random/shuffle_order.hpp>
-#include "json.hpp"
 #include <rref.h>
 //EXPERIMENTAL
 //to implement boundary oracles using NN queries
@@ -67,7 +65,6 @@ const static int USE_LSH = 0;
 const static int USE_LSHBOX = 2;
 const static int USE_EXACT = 3;
 
-using json = nlohmann::json;
 // my H-polytope class
 template <typename K>
 class stdHPolytope {
@@ -183,7 +180,7 @@ public:
         _sites.push_back(Point(_d, CGAL::ORIGIN));
     }
 
-    Point create_point_representation(vars& var, json& j, Point* givenInternalPoint=NULL) {
+    Point create_point_representation(vars& var, Point* givenInternalPoint=NULL) {
         falconnData.clear();
         _sites.clear();
 
@@ -204,49 +201,6 @@ public:
             _sites.push_back(reflexive_point);
         }
 		_sites.push_back(internalPoint);
-		if (var.verbose) {
-			if (dimension()<=3) {
-				j["items"] = json::array();
-				Triangulation T;
-				for (int i=0; i<_sites.size(); i++) {
-					T.insert(TriangulationPoint(_sites[i][0],_sites[i][1],_sites[i][2]));
-				}
-				for (auto it=T.finite_facets_begin(); it!=T.finite_facets_end(); ++it) {
-					CGAL::Exact_predicates_exact_constructions_kernel::Object_3 o = T.dual(*it);
-					if (const CGAL::Exact_predicates_exact_constructions_kernel::Segment_3* s = CGAL::object_cast<CGAL::Exact_predicates_exact_constructions_kernel::Segment_3>(&o)) {
-						json segment;
-						segment["type"] = "segment";
-						segment["a"] = json::array();
-						auto source = s->source();
-						auto target = s->target();
-						for (auto sit = source.cartesian_begin(); sit!=source.cartesian_end(); ++sit) {
-							segment["a"].push_back(CGAL::to_double((*sit).approx()));
-						}
-						segment["b"] = json::array();
-						for (auto sit = target.cartesian_begin(); sit!=target.cartesian_end(); ++sit) {
-							segment["b"].push_back(CGAL::to_double((*sit).approx()));
-						}
-						j["items"].push_back(segment);
-
-					}	
-					else if (const CGAL::Exact_predicates_exact_constructions_kernel::Ray_3* r     = CGAL::object_cast<CGAL::Exact_predicates_exact_constructions_kernel::Ray_3>(&o)) {
-						json segment;
-						segment["type"] = "ray";
-						segment["a"] = json::array();
-						auto source = r->source();
-						auto target = r->direction().vector();
-						for (auto sit = source.cartesian_begin(); sit!=source.cartesian_end(); ++sit) {
-							segment["a"].push_back(CGAL::to_double((*sit).approx()));
-						}
-						segment["b"] = json::array();
-						for (auto sit = target.cartesian_begin(); sit!=target.cartesian_end(); ++sit) {
-							segment["b"].push_back(CGAL::to_double((*sit).approx()));
-						}
-						j["items"].push_back(segment);
-					}	
-				}
-			}
-		}
         return _sites[_sites.size()-1];
     }
 
@@ -452,22 +406,11 @@ public:
         return compute_boundary_intersection(ray, numberOfSteps, succeeded, epsilon, algo_type, maxSteps);
     }
 
-    Point compute_boundary_intersection(Ray& ray, int* numberOfSteps, bool* succeeded, double epsilon, int algo_type, vars& var, json& j, int maxSteps=10, int numProbes=250) {
+    Point compute_boundary_intersection(Ray& ray, int* numberOfSteps, bool* succeeded, double epsilon, int algo_type, vars& var, int maxSteps=10, int numProbes=250) {
 		/* these are pre-computed just once */
 
         auto start_time = std::chrono::high_resolution_clock::now();
 		// ray as line (for the intersection with a hyperplane )
-		if (var.verbose) {
-			json rayjson;
-			for (auto sit=ray.source().cartesian_begin(); sit!=ray.source().cartesian_end(); ++sit) {
-				rayjson["source"].push_back((*sit));
-			}
-			for (auto dit=ray.source().cartesian_begin(); dit!=ray.source().cartesian_end(); ++dit) {
-				rayjson["direction"].push_back((*dit));
-			}
-			//j["ray"] = rayjson;
-			j["steps"] = json::array();
-		}
         Line ray_line(ray.source(), ray.direction());
 
 		// normalized ray direction
@@ -503,7 +446,6 @@ public:
 		funcs::Timer2 timer;
 		double lshTime = 0;
         for (int currentIt=0; currentIt<maxSteps; currentIt++) {
-			json step;
             (*numberOfSteps)++;
             auto start_time = std::chrono::high_resolution_clock::now();
             bool contains;
@@ -526,9 +468,6 @@ public:
             double elapsed_total = elapsed.count();
 			nn_elapsed_time += elapsed_total;
 
-			if (var.verbose) {
-				step["nnIndex"] = nnIndex;
-			}
             if (!contains) {
                 start_time = std::chrono::high_resolution_clock::now();
 				bool goForEStep = false;
@@ -556,12 +495,6 @@ public:
 					goForEStep = true;
 				}
 
-				if (var.verbose) {
-					step["inside"] = false;
-					//for (auto it=x1->cartesian_begin(); it!=x1->cartesian_end(); ++it) {
-					//	step["x1"].push_back((*it));
-					//}
-				}
                 is_epsilon_update = false;
 				if ( algo_type==USE_EXACT && (*x1)==x0 && epsilon==0 ) {
 					contains = true;
@@ -577,7 +510,6 @@ public:
                     if (((x0-CGAL::ORIGIN)-ray_source_v).squared_length()>=x0_ray_norm) {
                         cosine_positive = false;
                     }
-					step["epsilon_step"] = true;
                     end_time = std::chrono::high_resolution_clock::now();
                     elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time);
                     elapsed_total += elapsed.count();
@@ -592,15 +524,9 @@ public:
 					break;
                 }
             } else {
-				if (var.verbose) {
-					step["inside"] = true;
-				}
                 if (is_epsilon_update) {
                 }
             }
-			if (var.verbose) {
-				j["steps"].push_back(step);
-			}
 			if (nnIndex==_sites.size()-1)
 				break;
 

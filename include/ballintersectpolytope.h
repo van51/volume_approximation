@@ -124,10 +124,10 @@ public:
 		std::cout << "hooray" << std::endl;
 	}
 
-    Point compute_boundary_intersection(Ray ray,int* numberOfSteps, bool* succeeded, double epsilon, int algoType, vars& var, json&j, int maxSteps=100, int numOfProbes=100) {
+    Point compute_boundary_intersection(Ray ray,int* numberOfSteps, bool* succeeded, double epsilon, int algoType, vars& var, int maxSteps=100, int numOfProbes=100) {
 
         std::pair<Point,Point> polypair;
-        polypair.first = _P.compute_boundary_intersection(ray, numberOfSteps, succeeded, epsilon, algoType, var, j, maxSteps, numOfProbes);
+        polypair.first = _P.compute_boundary_intersection(ray, numberOfSteps, succeeded, epsilon, algoType, var, maxSteps, numOfProbes);
         std::pair<Point,Point> returnpair;
         std::pair<Point,Point> ballpair;
         bool ballinter=false;
