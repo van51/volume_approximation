@@ -23,7 +23,6 @@
 
 //this is for LP-solver
 //#include "../external/kd_GeRaF/source/Auto_random_kd_forest.h"
-#include </home/aneva/Libraries/funcs.hpp>
 #include <typeinfo>
 #include "falconn/lsh_nn_table.h"
 #include <iostream>
@@ -443,7 +442,6 @@ public:
         bool cosine_positive = true;
 		int prev_nnIndex = -1;
 		Point* x1;
-		funcs::Timer2 timer;
 		double lshTime = 0;
         for (int currentIt=0; currentIt<maxSteps; currentIt++) {
             (*numberOfSteps)++;
@@ -459,9 +457,7 @@ public:
                 contains = contains_point_exact_nn(x0, 0, &nnIndex);
 			}
 			else if (algo_type==USE_LSHBOX) {
-				timer.start();
                 contains = contains_point_lshbox(x0, &nnIndex);
-				lshTime += timer.elapsed_seconds();
 			}
             end_time = std::chrono::high_resolution_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::duration<double>>(end_time - start_time);
