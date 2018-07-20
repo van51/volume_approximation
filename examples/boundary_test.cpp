@@ -169,7 +169,22 @@ int main(int argc, char* argv[]) {
 	// create polytope with internal repr
 	stdHPolytope<double>* P = randomPolytope<double>(n, d, diameter);
 	
-	randomTransformation<stdHPolytope<double> >(P);	
+	if (!vm.count("full")) {
+		simpleTests(P, var, nqp, exact, k, l);
+	}
+	else {
+		completeTests(P, var, nqp, k, l, algoType, w);
+	}
+	
+ 	randomTransformation<stdHPolytope<double> >(P);	
+ 
+ 
+	if (!vm.count("full")) {
+		simpleTests(P, var, nqp, exact, k, l);
+	}
+	else {
+		completeTests(P, var, nqp, k, l, algoType, w);
+	}
 
 	delete P;
 }
