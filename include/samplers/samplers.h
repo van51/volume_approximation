@@ -59,6 +59,26 @@ Point get_point_in_Dsphere(unsigned int dim, NT radius){
     return p;
 }
 
+// Pick a random point from a d-hyperellipsoid
+template <class RNGType, class MT, class Point>
+Point get_point_in_ellipsoid(MT &T, Point &center){
+
+    typedef typename Point::FT NT;
+    unsigned int dim = center.dimension();
+    Point q = get_point_in_Dsphere<RNGType, Point>(dim, NT(1.0));
+    Point p(dim);
+    NT sum;
+    for (int i = 0; i < dim; ++i) {
+        sum = 0.0;
+        for (int j = 0; j < dim; ++j) {
+            sum += T(i,j)*q[j];
+        }
+        p.set_coord(i, sum + center[i]);
+    }
+
+    return p;
+}
+
 // ball walk with uniform target distribution
 template <class RNGType, class Point, class Polytope, typename NT>
 void ball_walk(Point &p,
@@ -69,6 +89,49 @@ void ball_walk(Point &p,
     Point y = get_point_in_Dsphere<RNGType, Point>(p.dimension(), delta);
     y = y + p;
     if (P.is_in(y)==-1) p = y;
+}
+
+template <class MT, class Point>
+bool is_in_ell(MT &H, Point &center, Point &p) {
+
+    typedef typename Point::FT NT;
+    Point x = p-q;
+    unsigned int dim = center.dimension();
+    NT sum, mults =0.0;
+
+    for (int i = 0; i < dim; ++i) {
+        sum = 0.0;
+        for (int j = 0; j < dim; ++j) {
+            sum += H(i,j)*x[j];
+        }
+        mults += sum * x[i];
+    }
+
+    if (mults < 1.0) {
+        return true;
+    }
+    return false;
+
+}
+
+
+template <class RNGType, class Polytope, class Point>
+void Dikin_walk(Point &p, Polytope &P) {
+
+    typedef typename Point::FT NT;
+    typedef typename Polytope::MT MT;
+    boost::random::uniform_real_distribution<> urdist(0,1);
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    RNGType rng2(seed);
+    MT Hp = P.get_Dikin_ell(p);
+    Point q = get_point_in_ellipsoid<RNGType>(Hp, p);
+    MT Hq = P.get_Dikin_ell(q);
+    if (is_in_ell(Hq, q, p)) {
+        if (urdist(rng2)<std::min(1.0, std::sqrt(Hq.determinant() / Hp.determinant()))){
+            return q;
+        }
+    }
+    return p;
 }
 
 // WARNING: USE ONLY WITH BIRKHOFF POLYOPES

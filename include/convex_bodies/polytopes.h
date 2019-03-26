@@ -401,6 +401,28 @@ public:
         b = b - A*c;
     }
 
+    void set_dikin_rep() {
+        for (int i = 0; i < A.rows(); ++i) {
+            A.row(i) = A.row(i) * (1.0/b(i));
+            b(i) = 1.0;
+        }
+    }
+
+    MT get_Dikin_ell(Point &x) {
+        MT H = MT::Zero(_d,_d);
+        VT r(_d);
+        NT sum;
+        for (int i = 0; i < A.rows(); ++i) {
+            r = A.row(i);
+            sum = 1.0;
+            for (int j = 0; j < _d; ++j) {
+                sum -= r(j)*x[j];
+            }
+            H = H + (r.transpose()*r)*(1.0/sum);
+        }
+        return H;
+    }
+
 
     // return for each facet the distance from the origin
     std::vector<NT> get_dists(NT radius){
