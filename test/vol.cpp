@@ -75,6 +75,7 @@ int main(const int argc, const char** argv)
          rdhr=false,
          exact_zono = false,
          dikin = false,
+         boundary = false,
          gaussian_sam = false;
 
     //this is our polytope
@@ -155,6 +156,11 @@ int main(const int argc, const char** argv)
       if(!strcmp(argv[i],"-rand")||!strcmp(argv[i],"--rand_only")){
           rand_only = true;
           std::cout<<"Generate random points only\n";
+          correct = true;
+      }
+      if(!strcmp(argv[i],"-boundary")){
+          boundary = true;
+          std::cout<<"Generate random points from the boundary only\n";
           correct = true;
       }
       if(!strcmp(argv[i],"-rdhr")){
@@ -453,11 +459,23 @@ int main(const int argc, const char** argv)
 
       double tstart11 = (double)clock()/(double)CLOCKS_PER_SEC;
       if (Zono) {
-          sampling_only<Point>(randPoints, ZP, walk_len, nsam, gaussian_sam, a, InnerBall.first, var1, var2);
+          if (boundary) {
+              boundary_rand_point_generator(ZP, InnerBall.first, nsam, walk_len, randPoints, var1);
+          } else {
+              sampling_only<Point>(randPoints, ZP, walk_len, nsam, gaussian_sam, a, InnerBall.first, var1, var2);
+          }
       } else if (!Vpoly) {
-          sampling_only<Point>(randPoints, HP, walk_len, nsam, gaussian_sam, a, InnerBall.first, var1, var2);
+          if (boundary) {
+              boundary_rand_point_generator(HP, InnerBall.first, nsam, walk_len, randPoints, var1);
+          } else {
+              sampling_only<Point>(randPoints, HP, walk_len, nsam, gaussian_sam, a, InnerBall.first, var1, var2);
+          }
       } else {
-          sampling_only<Point>(randPoints, VP, walk_len, nsam, gaussian_sam, a, InnerBall.first, var1, var2);
+          if (boundary) {
+              boundary_rand_point_generator(VP, InnerBall.first, nsam, walk_len, randPoints, var1);
+          } else {
+              sampling_only<Point>(randPoints, VP, walk_len, nsam, gaussian_sam, a, InnerBall.first, var1, var2);
+          }
       }
       double tstop11 = (double)clock()/(double)CLOCKS_PER_SEC;
       if(verbose) std::cout << "Sampling time: " << tstop11 - tstart11 << std::endl;
@@ -503,6 +521,10 @@ int main(const int argc, const char** argv)
           std::cout << "end\n--------------\n" << std::endl;
           return 0;
       } else {
+          if (e<=0) {
+              std::cout<<"\nThe requested error must be positive!"<<std::endl;
+              return -1;
+          }
           // Estimate the volume
           if (annealing) {
 

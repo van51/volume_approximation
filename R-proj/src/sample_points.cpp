@@ -283,7 +283,7 @@ Rcpp::NumericMatrix sample_points(Rcpp::Nullable<Rcpp::Reference> P = R_NilValue
                 VPcVP.init(VP1, VP2);
 
                 if (!set_mean_point || ball_walk) {
-                    InnerBall = VP.ComputeInnerBall();
+                    InnerBall = VP1.ComputeInnerBall();
                     if (!set_mean_point) MeanPoint = InnerBall.first;
                 }
                 break;
@@ -302,25 +302,50 @@ Rcpp::NumericMatrix sample_points(Rcpp::Nullable<Rcpp::Reference> P = R_NilValue
         vars_g<NT, RNGType> var2(dim, walkL, 0, 0, 1, 0, InnerBall.second, rng, 0, 0, 0, delta, false, verbose,
                                  rand_only, false, NN, birk, ball_walk, cdhr, rdhr, dikin);
 
+        if(boundary.isNotNull() && Rcpp::as<bool>(boundary)) {
+            if (dikin || ball_walk) {
+                throw Rcpp::exception("Only Hit-an-Run can be used for boundary sampling!");
+            }
+        } else if (dikin) {
+            if (type!=1) {
+                throw Rcpp::exception("Dikin walk can be used only for H-polytopes!");
+            }
+        }
         switch (type) {
             case 1: {
-                sampling_only<Point>(randPoints, HP, walkL, numpoints, gaussian,
-                                     a, MeanPoint, var1, var2);
+                if(boundary.isNotNull() && Rcpp::as<bool>(boundary)) {
+                    boundary_rand_point_generator(HP, MeanPoint, numpoints/2, walkL, randPoints, var1);
+                } else {
+                    sampling_only<Point>(randPoints, HP, walkL, numpoints, gaussian,
+                                         a, MeanPoint, var1, var2);
+                }
                 break;
             }
             case 2: {
-                sampling_only<Point>(randPoints, VP, walkL, numpoints, gaussian,
-                                     a, MeanPoint, var1, var2);
+                if(boundary.isNotNull() && Rcpp::as<bool>(boundary)) {
+                    boundary_rand_point_generator(VP, MeanPoint, numpoints/2, walkL, randPoints, var1);
+                } else {
+                    sampling_only<Point>(randPoints, VP, walkL, numpoints, gaussian,
+                                         a, MeanPoint, var1, var2);
+                }
                 break;
             }
             case 3: {
-                sampling_only<Point>(randPoints, ZP, walkL, numpoints, gaussian,
-                                     a, MeanPoint, var1, var2);
+                if(boundary.isNotNull() && Rcpp::as<bool>(boundary)) {
+                    boundary_rand_point_generator(ZP, MeanPoint, numpoints/2, walkL, randPoints, var1);
+                } else {
+                    sampling_only<Point>(randPoints, ZP, walkL, numpoints, gaussian,
+                                         a, MeanPoint, var1, var2);
+                }
                 break;
             }
             case 4: {
-                sampling_only<Point>(randPoints, VPcVP, walkL, numpoints, gaussian,
-                                     a, MeanPoint, var1, var2);
+                if(boundary.isNotNull() && Rcpp::as<bool>(boundary)) {
+                    boundary_rand_point_generator(VPcVP, MeanPoint, numpoints/2, walkL, randPoints, var1);
+                } else {
+                    sampling_only<Point>(randPoints, VPcVP, walkL, numpoints, gaussian,
+                                         a, MeanPoint, var1, var2);
+                }
                 break;
             }
         }
