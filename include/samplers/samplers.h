@@ -61,21 +61,27 @@ Point get_point_in_Dsphere(unsigned int dim, NT radius){
 
 // Pick a random point from a d-hyperellipsoid
 template <class RNGType, class MT, class Point>
-Point get_point_in_ellipsoid(MT &T, Point &center){
+Point get_point_in_ellipsoid(MT &H, Point &center){
 
     typedef typename Point::FT NT;
     unsigned int dim = center.dimension();
     Point q = get_point_in_Dsphere<RNGType, Point>(dim, NT(1.0));
     Point p(dim);
     NT sum;
+
+    MT Hinv = H.inverse();
+
+    Eigen::LLT<MT> lltOfA(Hinv); // compute the Cholesky decomposition of A
+    MT L = lltOfA.matrixL(); // retrieve factor L in the decomposition
     for (int i = 0; i < dim; ++i) {
         sum = 0.0;
         for (int j = 0; j < dim; ++j) {
-            sum += T(i,j)*q[j];
+            sum += L(i,j)*q[j];
         }
         p.set_coord(i, sum + center[i]);
     }
 
+    //p.print();
     return p;
 }
 
@@ -95,7 +101,7 @@ template <class MT, class Point>
 bool is_in_ell(MT &H, Point &center, Point &p) {
 
     typedef typename Point::FT NT;
-    Point x = p-q;
+    Point x = p-center;
     unsigned int dim = center.dimension();
     NT sum, mults =0.0;
 
@@ -123,15 +129,16 @@ void Dikin_walk(Point &p, Polytope &P) {
     boost::random::uniform_real_distribution<> urdist(0,1);
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
     RNGType rng2(seed);
+    if (urdist(rng2)<0.5) return;
     MT Hp = P.get_Dikin_ell(p);
     Point q = get_point_in_ellipsoid<RNGType>(Hp, p);
     MT Hq = P.get_Dikin_ell(q);
     if (is_in_ell(Hq, q, p)) {
         if (urdist(rng2)<std::min(1.0, std::sqrt(Hq.determinant() / Hp.determinant()))){
-            return q;
+            p=q;
         }
     }
-    return p;
+    //return p;
 }
 
 // WARNING: USE ONLY WITH BIRKHOFF POLYOPES
@@ -185,7 +192,9 @@ void rand_point_generator(Polytope &P,
     Point p_prev = p;
 
     if (var.ball_walk) {
-        ball_walk <RNGType> (p, P, ball_rad);
+        ball_walk<RNGType>(p, P, ball_rad);
+    } else if (var.dikin_walk) {
+        Dikin_walk<RNGType>(p, P);
     }else if (var.cdhr_walk) {//Compute the first point for the CDHR
         rand_coord = uidist(rng);
         kapa = urdist(rng);
@@ -199,7 +208,9 @@ void rand_point_generator(Polytope &P,
         for (unsigned int j = 0; j < walk_len; ++j) {
             if (var.ball_walk) {
                 ball_walk<RNGType>(p, P, ball_rad);
-            }else if (var.cdhr_walk) {
+            } else if (var.dikin_walk) {
+                Dikin_walk<RNGType>(p, P);
+            } else if (var.cdhr_walk) {
                 rand_coord_prev = rand_coord;
                 rand_coord = uidist(rng);
                 kapa = urdist(rng);

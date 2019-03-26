@@ -178,6 +178,14 @@ public:
         return true;
     }
 
+    void set_dikin_rep() {
+
+    }
+
+    MT get_Dikin_ell(Point &x) {
+        return P1.get_mat();
+    }
+
 };
 
 

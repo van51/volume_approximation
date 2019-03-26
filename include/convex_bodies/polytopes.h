@@ -409,16 +409,18 @@ public:
     }
 
     MT get_Dikin_ell(Point &x) {
-        MT H = MT::Zero(_d,_d);
+        MT H= MT::Zero(_d,_d);
         VT r(_d);
         NT sum;
         for (int i = 0; i < A.rows(); ++i) {
-            r = A.row(i);
+            for (int k = 0; k < _d; ++k) {
+                r(k) = A(i,k);
+            }
             sum = 1.0;
             for (int j = 0; j < _d; ++j) {
                 sum -= r(j)*x[j];
             }
-            H = H + (r.transpose()*r)*(1.0/sum);
+            H = H + (r*r.transpose())*(1.0/(sum*sum));
         }
         return H;
     }
@@ -790,6 +792,15 @@ public:
         }
         return true;
     }
+
+    void set_dikin_rep() {
+
+    }
+
+    MT get_Dikin_ell(Point &x) {
+        return V;
+    }
+
 };
 
 
@@ -1043,6 +1054,14 @@ public:
     template <class T>
     bool get_points_for_rounding (T &randPoints) {
         return false;
+    }
+
+    void set_dikin_rep() {
+
+    }
+
+    MT get_Dikin_ell(Point &x) {
+        return V;
     }
 
 };

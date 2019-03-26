@@ -118,7 +118,7 @@ Rcpp::NumericMatrix rounding (Rcpp::Reference P,
 
     // initialization
     vars<NT, RNGType> var(rnum,n,walkL,1,0.0,0.0,0,0.0,0,InnerBall.second,rng,urdist,urdist1,
-                          delta,verbose,rand_only,false,NN,birk,ball_walk,cdhr,rdhr);
+                          delta,verbose,rand_only,false,NN,birk,ball_walk,cdhr,rdhr,false);
     std::pair <NT, NT> round_res;
 
     switch (type) {
