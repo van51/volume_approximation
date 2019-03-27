@@ -1,4 +1,44 @@
-## Volume computation and sampling
+## A. Tests for the proposal "Geometric state-of-the-art random walks in R" in Google Summer of Code 2019
+
+### 1. Easy
+
+We added a check for the requested error. If the given value is non-positive then an exception is thrown. We added checks for both `R` and `C++` implementations. See file `volume.cpp` in folder `./R-proj/src` lines 173 and 186 (`Rcpp` function) and file `vol.cpp` in folder `./tests` line 524 (`C++` main). For exmple if you install the R package and run,  
+
+`> P=GenCube(2,'H')`  
+`> p=volume(P, error=0)`  
+  
+the output is:  
+`Error in volume(P, error = 0) : The requested error must be positive!`  
+
+### 2. Medium
+
+i) We have implemented Dikin walk. In file `samplers.h` in folder `./include/samplers` we added functions `Dikin_walk()`, `get_point_in_ellipsoid()` and `is_in_ell()` which implement the walk and in file `polytopes.h` in folder `./include/convex_bodies` we added function members `get_Dikin_ell()` and `set_dikin_rep()` to Hpolytope class in order to construct Dikin ellipsoids and get the right representation of the polytope respectively. We add the option to give string `Dikin` to the flag `WalkType` of the `Rcpp` function `sample_points()` in order to request uniform sampling from a convex polytope in H-representation with Dikin walk. For example if you run,  
+
+`> P=GenCube(2,'H')`  
+`> points=sample_points(P, WalkType = 'Dikin', N=1000)`  
+`> plot(points[1,],points[2,])`  
+  
+you get the following plot,  
+![alt text](https://github.com/TolisChal/volume_approximation/tree/gsoc19/R-proj/inst/gsoc19_tests_figs/dikin_cube_sample.png)
+
+ii) We have modified both Random and Coordinate Directions Hit-and-Run in order to perform boundary sampling from a convex polytope. In file `samplers.h` in folder `./include/samplers` we implemented function `boundary_rand_point_generator()` which takes as input a convex polytope in any representation and samples the boundary. In `Rcpp` function `sample_points()` we added the boolean flag `boundary` which has to be `TRUE` in order to request boundary sampling. For example if you run,  
+
+`> P=GenCross(2,'H')`  
+`> b_points = sample_points(P, boundary = TRUE, N=2000)`  
+`> plot(b_points[1,], b_points[2,])`  
+
+you get the following plot,  
+![alt text](https://github.com/TolisChal/volume_approximation/tree/gsoc19/R-proj/inst/gsoc19_tests_figs/boundary_sampling_cross_poly.png)  
+
+Moreover we have added some checks in order to throw excepions when boundary sampling is requested with Ball or Dikin walk. For example if you run,  
+
+`> b_points = sample_points(P, boundary = TRUE, N=2000, WalkType = 'Dikin')`  
+
+the output is:  
+`Error in sample_points(P, boundary = TRUE, N = 2000, WalkType = "Dikin") : `  
+`  Only Hit-an-Run can be used for boundary sampling!`
+
+## B. Volume computation and sampling
 
 |         | Build           
 | ------------- |:-------------:| 

@@ -310,6 +310,7 @@ Rcpp::NumericMatrix sample_points(Rcpp::Nullable<Rcpp::Reference> P = R_NilValue
             if (type!=1) {
                 throw Rcpp::exception("Dikin walk can be used only for H-polytopes!");
             }
+            HP.set_dikin_rep();
         }
         switch (type) {
             case 1: {
