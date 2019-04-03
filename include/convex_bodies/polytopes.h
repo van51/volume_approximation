@@ -13,7 +13,19 @@
 #include <limits>
 
 #include <iostream>
+#include <vector>
+#include <chrono>
+#include <cmath>
+#include "random.hpp"
+#include "random/uniform_int.hpp"
+#include "random/normal_distribution.hpp"
+#include "random/uniform_real_distribution.hpp"
+#include "vars.h"
 #include "solve_lp.h"
+
+#ifdef USE_FAISS
+#include "faiss/IndexFlat.h"
+#endif
 
 //min and max values for the Hit and Run functions
 
@@ -25,9 +37,9 @@ public:
     typedef Point PolytopePoint;
     typedef typename Point::FT NT;
     typedef typename std::vector<NT>::iterator viterator;
-    //using RowMatrixXd = Eigen::Matrix<NT, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-    //typedef RowMatrixXd MT;
-    typedef Eigen::Matrix<NT,Eigen::Dynamic,Eigen::Dynamic> MT;
+
+    using RowMatrixXd = Eigen::Matrix<NT, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+    typedef RowMatrixXd MT;
     typedef Eigen::Matrix<NT,Eigen::Dynamic,1> VT;
 
 private:
@@ -38,6 +50,12 @@ private:
     //NT minNT = -1.79769e+308;
     NT maxNT = std::numeric_limits<NT>::max();
     NT minNT = std::numeric_limits<NT>::lowest();
+
+    NT** representatives;
+    double maxDistToBoundary;
+#ifdef USE_FAISS
+    faiss::IndexFlatL2* index; // call constructor
+#endif
 
 public:
     HPolytope() {}
@@ -68,6 +86,199 @@ public:
         }
     }
 
+    HPolytope(Eigen::Map<MT> A, Eigen::Map<VT> b) {
+        this->A = A;
+        this->b = b;
+        _d = A.cols();
+        representatives = NULL;
+    }
+
+    ~HPolytope() {
+        if (representatives!=NULL) {
+            for (int i=0; i<num_of_hyperplanes()+1; i++) {
+                delete representatives[i];
+            }
+            delete []representatives;
+#ifdef USE_FAISS
+            delete index;
+#endif
+        }
+
+    }
+
+    NT* project(NT* point, int facet_idx) {
+        /**
+		 * for a hyperplane H:=ax=b and a point p:
+         * proj_H(p)=p - a * ((p.dot_product(a) - b)/ a.dot_product(a))
+         */
+        NT dot_product = 0;
+        NT normalizer = 0;
+        for (uint i=0; i<dimension(); i++) {
+            dot_product += A(facet_idx, i)*point[i];
+            normalizer += A(facet_idx, i)*A(facet_idx, i);
+        }
+
+        double dir_coeff = (dot_product - b[facet_idx]) / normalizer;
+
+        NT* projected_point = new NT[dimension()];
+        for (uint i=0; i<dimension(); i++) {
+            projected_point[i] = point[i] - dir_coeff*A(facet_idx, i);
+        }
+        return projected_point;
+    }
+
+    NT* get_reflexive_point(NT* internalPoint, int facet_idx) {
+		/**
+		 * Get the reflexive point of a point p inside the polytope about the facet_idx-th facet
+		 * ie. if the facet F is defined by the supporting hyperplane H := ax=b, then
+		 * refl_F(p) = p+2*(proj_H(p)-p) <=> 2*proj_H(p)-p
+		 */
+        NT* projection = project(internalPoint, facet_idx);
+        for (uint i=0; i<dimension(); i++) {
+            projection[i] = 2*projection[i] - internalPoint[i];
+        }
+
+        return projection;
+    }
+
+    double squared_distance(NT* a, NT* b) {
+        double dist = 0.0;
+        for (uint i=0; i<dimension(); i++) {
+            double tmp = a[i]-b[i];
+            dist += tmp*tmp;
+        }
+        return dist;
+    }
+
+    void create_point_representation(NT* internalPoint) {
+        representatives = new NT*[num_of_hyperplanes()+1];
+        maxDistToBoundary=-1;
+
+        representatives[0] = this->get_reflexive_point(internalPoint, 0);
+        maxDistToBoundary = squared_distance(internalPoint, representatives[0]);
+
+        for (int i=1; i<num_of_hyperplanes(); i++) {
+            representatives[i] = this->get_reflexive_point(internalPoint, i);
+            double tmpDist = squared_distance(internalPoint, representatives[i]);
+            if (tmpDist>maxDistToBoundary) {
+                maxDistToBoundary = tmpDist;
+            }
+        }
+
+        maxDistToBoundary = std::sqrt(maxDistToBoundary);
+
+        representatives[num_of_hyperplanes()] = new NT[dimension()];
+        for (uint i=0; i<dimension(); i++) {
+            representatives[num_of_hyperplanes()][i] = internalPoint[i];
+        }
+#ifdef USE_FAISS
+        index = new faiss::IndexFlatL2(dimension());
+        for (int i=0;i<num_of_hyperplanes()+1; i++)
+            index->add(1, representatives[i]);
+#endif
+    }
+
+#ifdef USE_FAISS
+    long get_nearest_facet(NT* point) {
+        long *I = new long[1];
+        float *D = new float[1];
+        index->search(1, point, 1, D, I);
+
+        long nnIndex = I[0];
+
+        delete []I;
+        delete []D;
+        return nnIndex;
+    }
+    bool contains_point(NT* point) {
+        long nnIndex = get_nearest_facet(point); 
+        return nnIndex==num_of_hyperplanes();
+    }
+#endif
+
+    Point intersect_ray_hyperplane(Point& source, Point& direction, int facet_idx) {
+        //l = (b -a*s)/(r*a);
+        double source_dot = 0.0;
+        double dir_dot = 0.0;
+
+        for (uint i=0; i<dimension(); i++) {
+            source_dot += A(facet_idx,i)*source[i];
+            dir_dot += A(facet_idx,i)*direction[i];
+        }
+
+        double lambda = (b[facet_idx]-source_dot)/dir_dot;
+
+        Point intersection(dimension());
+        for (uint i=0; i<dimension(); i++) {
+            intersection.set_coord(i, source[i]+lambda*direction[i]);
+        }
+        return intersection;
+    }
+
+#ifdef asd
+    Point compute_boundary_intersection(Point& source, Point& direction, float epsilon, int maxSteps) {
+        direction.normalize();
+        Point direction_epsilon(dimension());
+        for (uint j=0; j<dimension(); j++) {
+            direction_epsilon.set_coord(j, direction[j]*(-epsilon));
+        }
+        Point x0(dimension());
+        for (uint i=0; i<dimension(); i++) {
+            x0.set_coord(i, source[i]+direction[i]*2*maxDistToBoundary);
+        }
+
+        for (int currentIt=0; currentIt<maxSteps; currentIt++) {
+			/** Find nearest facet */
+            long nn_index = get_nearest_facet(x0.data());
+
+            /** if point is not inside */
+            if (nn_index!=num_of_hyperplanes()) {
+                Point x1 = intersect_ray_hyperplane(source, direction, nn_index);
+
+                double x1_ray_norm = 0.0;
+                double x0_ray_norm = 0.0;
+                for (uint d_idx=0; d_idx<dimension(); ++d_idx) {
+                    double x1_tmp = x1[d_idx]-source[d_idx];
+                    x1_ray_norm += x1_tmp*x1_tmp;
+
+                    double x0_tmp = x0[d_idx]-source[d_idx];
+                    x0_ray_norm += x0_tmp*x0_tmp;
+                }
+
+                if (x1_ray_norm>=x0_ray_norm) {
+                    for (uint j=0; j<dimension(); j++) {
+                        x0.set_coord(j, x0[j]+direction_epsilon[j]);
+                    }
+                }
+                else {
+                    for (uint j=0; j<dimension(); j++) {
+                        x0.set_coord(j, x1[j]);
+                    }
+                }
+            }
+
+            else{
+                break;
+            }
+        }
+        return x0;
+    }
+#endif
+    //Check if Point p is in H-polytope P:= Ax<=b
+    int is_in(Point p) {
+        NT sum;
+        int m = A.rows();
+        for (int i = 0; i < m; i++) {
+            sum = b(i);
+            for (unsigned int j = 0; j < _d; j++) {
+                sum -= A(i, j) * p[j];
+            }
+            if (sum < NT(0)) { //Check if corresponding hyperplane is violated
+                return 0;
+            }
+        }
+        return -1;
+    }
 
     // return dimension
     unsigned int dimension() {
@@ -82,7 +293,7 @@ public:
 
 
     // return the matrix A
-    MT get_mat() {
+    MT& get_mat() {
         return A;
     }
 
@@ -185,13 +396,23 @@ public:
         for (unsigned int i = 0; i < A.rows(); i++) {
             for (unsigned int j = 0; j < _d; j++) {
                 #ifdef VOLESTI_DEBUG
-                std::cout << -A(i, j) << " ";
+                std::cout << A(i, j) << " ";
                 #endif
             }
             #ifdef VOLESTI_DEBUG
             std::cout << "<= " << b(i) << std::endl;
             #endif
         }
+
+#ifdef VOLESTI_DEBUG
+        for (int i=0; i<num_of_hyperplanes()+1; i++) {
+            std::cout<<"#"<<i<<": "<<representatives[i][0];
+            for (uint j=1; j<dimension(); j++) {
+                std::cout<<", "<<representatives[i][j];
+            }
+            std::cout<<std::endl;
+        }
+#endif
     }
 
 
@@ -260,22 +481,6 @@ public:
     }*/
 
     
-    //Check if Point p is in H-polytope P:= Ax<=b
-    int is_in(Point p) {
-        NT sum;
-        int m = A.rows();
-        for (int i = 0; i < m; i++) {
-            sum = b(i);
-            for (unsigned int j = 0; j < _d; j++) {
-                sum -= A(i, j) * p[j];
-            }
-            if (sum < NT(0)) { //Check if corresponding hyperplane is violated
-                return 0;
-            }
-        }
-        return -1;
-    }
-
 
     //Compute Chebyshev ball of H-polytope P:= Ax<=b
     //Use LpSolve library
@@ -289,8 +494,8 @@ public:
 
     // compute intersection point of ray starting from r and pointing to v
     // with polytope discribed by A and b
-    std::pair<NT,NT> line_intersect(Point r,
-                                          Point v) {
+    std::pair<Point, Point> line_intersect(Point& r,
+                                          Point& v) {
 
         NT lamda = 0, min_plus = NT(maxNT), max_minus = NT(minNT);
         NT sum_nom, sum_denom;
@@ -302,23 +507,30 @@ public:
         for (int i = 0; i < m; i++) {
             sum_nom = b(i);
             sum_denom = NT(0);
-            j = 0;
-            rit = r.iter_begin();
-            vit = v.iter_begin();
-            for ( ; rit != r.iter_end(); rit++, vit++, j++){
-                sum_nom -= A(i, j) * (*rit);
-                sum_denom += A(i, j) * (*vit);
+            for (uint j=0; j<dimension(); j++){
+                sum_nom -= A(i, j) * r[j];
+                sum_denom += A(i, j) * v[j];
             }
             if (sum_denom == NT(0)) {
                 //std::cout<<"div0"<<std::endl;
                 ;
             } else {
+                //std::cout << sum_nom << "\t"<<sum_denom<<std::endl;
                 lamda = sum_nom / sum_denom;
                 if (lamda < min_plus && lamda > 0) min_plus = lamda;
                 if (lamda > max_minus && lamda < 0) max_minus = lamda;
             }
         }
-        return std::pair<NT, NT>(min_plus, max_minus);
+        //r+(min_plus*v),r+(max_minus*v)
+        Point a(dimension());
+        Point b(dimension());
+
+        //std::cout<<"min plus: " <<min_plus<<", max minus: "<<max_minus<<std::endl;
+        for (uint i=0; i<dimension(); i++) {
+            a.set_coord(i, r[i] + min_plus*v[i]);
+            b.set_coord(i, r[i] + max_minus*v[i]);
+        }
+        return std::pair<Point, Point>(a, b);
     }
 
 
