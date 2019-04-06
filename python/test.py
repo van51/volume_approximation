@@ -41,7 +41,7 @@ failures = 0
 boundary_time = 0.0
 li_time = 0.0
 avg_dists=0.0
-for i in range(1000):
+for i in range(10):
     direction=np.random.multivariate_normal(mean, cov, 1)
     direction=direction/np.linalg.norm(direction)
     source = np.zeros(dim)
@@ -64,3 +64,14 @@ for i in range(1000):
         failures += 1
 
 print('Boundary time: {}.\nLI time: {}\nFailures:{}\nAvg dists:{}'.format(boundary_time/1000, li_time/1000, failures, avg_dists/2000))
+
+
+a=np.array([[1,0],[0,1],1,0], [0,-1]])
+b=np.array([1,1,1,1])
+#b.shape = (2, 1);
+p=volesti.Polytope(a, b)
+internal_point = np.array([0, 0])
+boundary_points=p.sample_boundary(internal_point, 200, 5)
+from matplotlib import pyplot as plt
+plt.scatter(boundary_points[:,0], boundary_points[:,1])
+plt.show()

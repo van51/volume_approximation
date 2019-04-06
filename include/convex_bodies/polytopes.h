@@ -491,10 +491,24 @@ public:
         return res;
     }
 
+    std::pair<Point, Point> line_intersect_as_p(Point& r, Point& v) {
+        auto pair = line_intersect(r, v);
+        auto min_plus = pair.first;
+        auto max_minus = pair.second;
+        //r+(min_plus*v),r+(max_minus*v)
+        Point a(dimension());
+        Point b(dimension());
 
+        //std::cout<<"min plus: " <<min_plus<<", max minus: "<<max_minus<<std::endl;
+        for (uint i=0; i<dimension(); i++) {
+            a.set_coord(i, r[i] + min_plus*v[i]);
+            b.set_coord(i, r[i] + max_minus*v[i]);
+        }
+        return std::pair<Point, Point>(a, b);
+    }
     // compute intersection point of ray starting from r and pointing to v
     // with polytope discribed by A and b
-    std::pair<Point, Point> line_intersect(Point& r,
+    std::pair<NT, NT> line_intersect(Point& r,
                                           Point& v) {
 
         NT lamda = 0, min_plus = NT(maxNT), max_minus = NT(minNT);
@@ -521,16 +535,7 @@ public:
                 if (lamda > max_minus && lamda < 0) max_minus = lamda;
             }
         }
-        //r+(min_plus*v),r+(max_minus*v)
-        Point a(dimension());
-        Point b(dimension());
-
-        //std::cout<<"min plus: " <<min_plus<<", max minus: "<<max_minus<<std::endl;
-        for (uint i=0; i<dimension(); i++) {
-            a.set_coord(i, r[i] + min_plus*v[i]);
-            b.set_coord(i, r[i] + max_minus*v[i]);
-        }
-        return std::pair<Point, Point>(a, b);
+        return std::pair<NT, NT>(min_plus, max_minus);
     }
 
 

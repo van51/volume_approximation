@@ -6,11 +6,15 @@
 #include <eigen3/Eigen/Eigen>
 #include "polytopes.h"
 #include <iostream>
+#include "polytope_generators.h"
+#include <vector>
+#include "samplers.h"
 
 typedef float                    NT;
 typedef Cartesian<NT>             Kernel;
 typedef typename Kernel::Point    Point;
 typedef HPolytope<Point> Polytope;
+typedef boost::mt19937            RNGType;
 
 namespace py=pybind11;
 
@@ -116,7 +120,7 @@ PYBIND11_MODULE(volesti, m) {
             Point source_p(p.dimension(), (NT* ) source_i.ptr);
             Point ray_p(p.dimension(), (NT* ) ray_i.ptr);
 
-            std::pair<Point, Point> intersection = p.line_intersect(source_p, ray_p);
+            std::pair<Point, Point> intersection = p.line_intersect_as_p(source_p, ray_p);
             intersection.first.get_coeffs().insert(intersection.first.get_coeffs().end(), 
                     intersection.second.get_coeffs().begin(), intersection.second.get_coeffs().end());
 
@@ -130,7 +134,40 @@ PYBIND11_MODULE(volesti, m) {
                     { sizeof(NT) * p.dimension(), sizeof(NT) }
                 )
             );
+        }).
+        def("sample_boundary", [](Polytope &p, py::array_t<NT> internal_point,
+                                   int rnum, unsigned int walk_len) -> py::array_t<NT> {
+            py::buffer_info internal_point_i = internal_point.request();
+            Point internal_point_p(p.dimension(), (NT* ) internal_point_i.ptr);
+            std::vector<Point> rand_points;
+
+            unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+            RNGType rng(seed);
+            boost::normal_distribution<> rdist(0,1);
+            boost::random::uniform_real_distribution<>(urdist);
+            boost::random::uniform_real_distribution<> urdist1(-1,1);
+
+            vars<NT, RNGType> var(0, p.dimension(), 0, 1, 0, 0, 0, 0.0, 0, 0, rng,
+            urdist, urdist1, 0, false, false, false, false, false, false, false, true, false);
+
+            boundary_rand_point_generator(p, internal_point_p, rnum, walk_len, rand_points, var);
+
+            NT* return_data = new NT[rnum*p.dimension()];
+            for(int i = 0; i < rnum; ++i) {
+                for (int j=0; j<p.dimension(); ++j) {
+                    return_data[i*p.dimension()+j] = rand_points[i][j];
+                }
+            }
+
+            return py::array_t<NT>(
+                py::buffer_info(
+                    return_data,
+                    sizeof(NT),
+                    py::format_descriptor<NT>::format(),
+                    2,
+                    { rnum, (int) p.dimension() },
+                    { sizeof(NT) * p.dimension(), sizeof(NT) }
+                )
+            );
         });
-
-
 }
