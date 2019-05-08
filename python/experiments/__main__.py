@@ -1,4 +1,6 @@
 import click
+import random
+import numpy as np
 
 from .experiments import Experiments
 
@@ -9,7 +11,11 @@ from .experiments import Experiments
 @click.option('--num-bits', type=int, help='LSH num bits. default = d', default=0)
 @click.option('-o', '--output', type=str, default=None,
               help='Location to store the results')
-def experiment(n, d, num_bits, output):
+@click.option('--seed', type=int, default=42)
+def experiment(n, d, num_bits, output, seed):
+    random.seed(seed)
+    np.random.seed(seed)
+
     if output is not None:
         try:
             with open(output, 'w') as _:
