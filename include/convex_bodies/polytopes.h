@@ -24,7 +24,7 @@
 #include "solve_lp.h"
 
 #ifdef USE_FAISS
-#include "faiss/IndexFlat.h"
+#include "faiss/IndexLSH.h"
 #endif
 
 //min and max values for the Hit and Run functions
@@ -54,7 +54,7 @@ private:
     NT** representatives;
     double maxDistToBoundary;
 #ifdef USE_FAISS
-    faiss::IndexFlatL2* index; // call constructor
+    faiss::IndexLSH* index; // call constructor
 #endif
 
 public:
@@ -150,7 +150,11 @@ public:
         return dist;
     }
 
-    void create_point_representation(NT* internalPoint) {
+    void create_point_representation(NT* internalPoint
+#ifdef USE_FAISS
+, int num_bits = 0
+#endif
+            ) {
         representatives = new NT*[num_of_hyperplanes()+1];
         maxDistToBoundary=-1;
 
@@ -172,7 +176,10 @@ public:
             representatives[num_of_hyperplanes()][i] = internalPoint[i];
         }
 #ifdef USE_FAISS
-        index = new faiss::IndexFlatL2(dimension());
+        if (num_bits == 0) {
+            num_bits = 2 * dimension();
+        }
+        index = new faiss::IndexLSH(dimension(), num_bits);
         for (int i=0;i<num_of_hyperplanes()+1; i++)
             index->add(1, representatives[i]);
 #endif
@@ -215,7 +222,7 @@ public:
         return intersection;
     }
 
-#ifdef asd
+#ifdef USE_BOUNDARY
     Point compute_boundary_intersection(Point& source, Point& direction, float epsilon, int maxSteps) {
         direction.normalize();
         Point direction_epsilon(dimension());
@@ -405,12 +412,14 @@ public:
         }
 
 #ifdef VOLESTI_DEBUG
-        for (int i=0; i<num_of_hyperplanes()+1; i++) {
-            std::cout<<"#"<<i<<": "<<representatives[i][0];
-            for (uint j=1; j<dimension(); j++) {
-                std::cout<<", "<<representatives[i][j];
+        if (representatives!=NULL) {
+            for (int i=0; i<num_of_hyperplanes()+1; i++) {
+                std::cout<<"#"<<i<<": "<<representatives[i][0];
+                for (uint j=1; j<dimension(); j++) {
+                    std::cout<<", "<<representatives[i][j];
+                }
+                std::cout<<std::endl;
             }
-            std::cout<<std::endl;
         }
 #endif
     }

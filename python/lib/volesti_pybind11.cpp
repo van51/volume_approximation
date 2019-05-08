@@ -56,10 +56,10 @@ PYBIND11_MODULE(volesti, m) {
             return p;
         }))
         .def("print", &Polytope::print)
-        .def("create_point_representation", [](Polytope &p, py::array_t<NT> internalPoint) {
+        .def("create_point_representation", [](Polytope &p, py::array_t<NT> internalPoint, int num_bits) {
             py::buffer_info ip_info = internalPoint.request();
-            p.create_point_representation((NT*) ip_info.ptr);
-        })
+            p.create_point_representation((NT*) ip_info.ptr, num_bits);
+        }, py::arg(), py::arg("num_bits") = 0)
         .def("contains_point", [](Polytope &p, py::array_t<NT> point) -> bool {
             py::buffer_info point_info = point.request();
             return p.contains_point((NT* ) point_info.ptr);
