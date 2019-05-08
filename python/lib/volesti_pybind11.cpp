@@ -9,6 +9,7 @@
 #include "polytope_generators.h"
 #include <vector>
 #include "samplers.h"
+#include <memory>
 
 typedef float                    NT;
 typedef Cartesian<NT>             Kernel;
