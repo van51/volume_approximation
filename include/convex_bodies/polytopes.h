@@ -160,7 +160,6 @@ public:
 
         representatives[0] = this->get_reflexive_point(internalPoint, 0);
         maxDistToBoundary = squared_distance(internalPoint, representatives[0]);
-
         for (int i=1; i<num_of_hyperplanes(); i++) {
             representatives[i] = this->get_reflexive_point(internalPoint, i);
             double tmpDist = squared_distance(internalPoint, representatives[i]);
@@ -170,7 +169,6 @@ public:
         }
 
         maxDistToBoundary = std::sqrt(maxDistToBoundary);
-
         representatives[num_of_hyperplanes()] = new NT[dimension()];
         for (uint i=0; i<dimension(); i++) {
             representatives[num_of_hyperplanes()][i] = internalPoint[i];
