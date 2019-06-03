@@ -23,7 +23,7 @@ PYBIND11_MODULE(volesti, m) {
     py::class_<Point>(m, "Point", py::buffer_protocol())
         .def(py::init([](py::array_t<NT> b) {
             py::buffer_info info = b.request();
-            Point* p = new Point(info.shape[0]);
+            auto* p = new Point(info.shape[0]);
             p->set_dimension(info.shape[0]);
             NT* buffer_data = static_cast<NT*>(info.ptr);
             for (int i=0; i<p->dimension(); i++) {
@@ -50,11 +50,41 @@ PYBIND11_MODULE(volesti, m) {
             py::buffer_info A_info = A.request();
             py::buffer_info b_info = b.request();
 
-            Eigen::Map<Polytope::MT> A_map((NT*) A_info.ptr, A_info.shape[0], A_info.shape[1]);
-            Eigen::Map<Polytope::VT> b_map((NT*) b_info.ptr, b_info.shape[0], 1);
-            Polytope* p = new Polytope(A_map, b_map);
+            Eigen::Map<Polytope::MT> A_map((NT *) A_info.ptr, A_info.shape[0], A_info.shape[1]);
+            Eigen::Map<Polytope::VT> b_map((NT *) b_info.ptr, b_info.shape[0], 1);
+            auto *p = new Polytope(A_map, b_map);
             return p;
         }))
+        .def_property_readonly("dimension", [](Polytope& P) -> int {
+            return P.dimension();
+        })
+        .def_property_readonly("n_hyperplanes", [](Polytope& P) -> int {
+            return P.num_of_hyperplanes();
+        })
+        .def_property_readonly("A",[](Polytope &P) -> py::array_t<NT> {
+            return py::array_t<NT>(
+                    py::buffer_info(
+                            P.get_mat().data(),
+                            sizeof(NT),
+                            py::format_descriptor<NT>::format(),
+                            2,
+                            { (uint) P.num_of_hyperplanes(), P.dimension() },
+                            { sizeof(NT) * P.dimension(), sizeof(NT) }
+                    )
+            );
+        })
+        .def_property_readonly("b",[](Polytope &P) -> py::array_t<NT> {
+            return py::array_t<NT>(
+                    py::buffer_info(
+                            P.get_vec().data(),
+                            sizeof(NT),
+                            py::format_descriptor<NT>::format(),
+                            1,
+                            { P.num_of_hyperplanes() },
+                            { sizeof(NT) }
+                    )
+            );
+        })
         .def("print", &Polytope::print)
         .def("create_point_representation", [](Polytope &p, py::array_t<NT> internalPoint, int num_bits) {
             py::buffer_info ip_info = internalPoint.request();
